@@ -6,9 +6,6 @@ A beautiful, modern Kanban board built with **Next.js 14**, **TypeScript**, and 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
 ![Supabase](https://img.shields.io/badge/Supabase-2.38.4-green?style=for-the-badge&logo=supabase)
 
-## 🌐 Live Demo
-
-**🚀 Try it out:** [View Live Demo](https://your-deployment-url.vercel.app)
 
 *Note: If you don't have a live deployment yet, you can run it locally following the setup instructions below.*
 
