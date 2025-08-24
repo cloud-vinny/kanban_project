@@ -9,63 +9,85 @@ export async function getBoards(): Promise<Board[]> {
     .select('*')
     .order('created_at', { ascending: false })
   
-  if (error) throw error
+  if (error) {
+    console.error('Error fetching boards:', error)
+    throw error
+  }
   return data || []
 }
 
 export async function getBoard(id: string): Promise<BoardWithFullData | null> {
   const supabase = createClient()
   
-  // Get board with columns and cards
-  const { data: board, error: boardError } = await supabase
-    .from('boards')
-    .select('*')
-    .eq('id', id)
-    .single()
-  
-  if (boardError || !board) return null
-  
-  // Get columns for this board
-  const { data: columns, error: columnsError } = await supabase
-    .from('columns')
-    .select('*')
-    .eq('board_id', id)
-    .order('position')
-  
-  if (columnsError) throw columnsError
-  
-  // Get cards for each column
-  const columnsWithCards: ColumnWithCards[] = []
-  for (const column of columns || []) {
-    const { data: cards, error: cardsError } = await supabase
-      .from('cards')
+  try {
+    // Get board with columns and cards
+    const { data: board, error: boardError } = await supabase
+      .from('boards')
       .select('*')
-      .eq('column_id', column.id)
+      .eq('id', id)
+      .single()
+    
+    if (boardError || !board) {
+      console.error('Board not found:', boardError)
+      return null
+    }
+    
+    // Get columns for this board
+    const { data: columns, error: columnsError } = await supabase
+      .from('columns')
+      .select('*')
+      .eq('board_id', id)
       .order('position')
     
-    if (cardsError) throw cardsError
+    if (columnsError) {
+      console.error('Error fetching columns:', columnsError)
+      throw columnsError
+    }
     
-    columnsWithCards.push({
-      ...column,
-      cards: cards || []
-    })
-  }
-  
-  return {
-    ...board,
-    columns: columnsWithCards
+    // Get cards for each column
+    const columnsWithCards: ColumnWithCards[] = []
+    for (const column of columns || []) {
+      const { data: cards, error: cardsError } = await supabase
+        .from('cards')
+        .select('*')
+        .eq('column_id', column.id)
+        .order('position')
+      
+      if (cardsError) {
+        console.error('Error fetching cards:', cardsError)
+        throw cardsError
+      }
+      
+      columnsWithCards.push({
+        ...column,
+        cards: cards || []
+      })
+    }
+    
+    return {
+      ...board,
+      columns: columnsWithCards
+    }
+  } catch (error) {
+    console.error('Error in getBoard:', error)
+    throw error
   }
 }
 
 export async function createBoard(title: string): Promise<Board> {
   const supabase = createClient()
+  
+  // Since RLS is disabled, we'll create a board without owner_id for now
   const { data, error } = await supabase
     .from('boards')
     .insert({ title })
     .select()
     .single()
   
-  if (error) throw error
+  if (error) {
+    console.error('Error creating board:', error)
+    throw error
+  }
   return data
 }
 
@@ -78,7 +100,10 @@ export async function updateBoard(id: string, updates: Partial<Board>): Promise<
     .select()
     .single()
   
-  if (error) throw error
+  if (error) {
+    console.error('Error updating board:', error)
+    throw error
+  }
   return data
 }
 
@@ -89,7 +114,10 @@ export async function deleteBoard(id: string): Promise<void> {
     .delete()
     .eq('id', id)
   
-  if (error) throw error
+  if (error) {
+    console.error('Error deleting board:', error)
+    throw error
+  }
 }
 
 // Column operations
@@ -101,7 +129,10 @@ export async function createColumn(boardId: string, title: string, position: num
     .select()
     .single()
   
-  if (error) throw error
+  if (error) {
+    console.error('Error creating column:', error)
+    throw error
+  }
   return data
 }
 
@@ -114,7 +145,10 @@ export async function updateColumn(id: string, updates: Partial<Column>): Promis
     .select()
     .single()
   
-  if (error) throw error
+  if (error) {
+    console.error('Error updating column:', error)
+    throw error
+  }
   return data
 }
 
@@ -125,39 +159,66 @@ export async function deleteColumn(id: string): Promise<void> {
     .delete()
     .eq('id', id)
   
-  if (error) throw error
+  if (error) {
+    console.error('Error deleting column:', error)
+    throw error
+  }
 }
 
 // Card operations
-export async function createCard(columnId: string, title: string, description?: string, position?: number): Promise<Card> {
-  const supabase = createClient()
-  
-  // If no position specified, get the next position
-  let cardPosition = position
-  if (cardPosition === undefined) {
-    const { data: existingCards } = await supabase
+export async function createCard(columnId: string, title: string, description?: string): Promise<Card> {
+  try {
+    const supabase = createClient()
+    
+    // First get the column to get the board_id
+    const { data: column, error: columnError } = await supabase
+      .from('columns')
+      .select('board_id')
+      .eq('id', columnId)
+      .single()
+    
+    if (columnError) {
+      console.error('Error fetching column:', columnError)
+      throw columnError
+    }
+    
+    // Get the next position for this column
+    const { data: existingCards, error: positionError } = await supabase
       .from('cards')
       .select('position')
       .eq('column_id', columnId)
       .order('position', { ascending: false })
       .limit(1)
     
-    cardPosition = (existingCards?.[0]?.position || -1) + 1
+    if (positionError) {
+      console.error('Error fetching existing cards:', positionError)
+      throw positionError
+    }
+    
+    const nextPosition = existingCards && existingCards.length > 0 ? existingCards[0].position + 1 : 1
+    
+    const { data, error } = await supabase
+      .from('cards')
+      .insert({
+        board_id: column.board_id,
+        column_id: columnId,
+        title,
+        description: description || null,
+        position: nextPosition
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('Error creating card:', error)
+      throw error
+    }
+    
+    return data
+  } catch (error) {
+    console.error('Error in createCard:', error)
+    throw error
   }
-  
-  const { data, error } = await supabase
-    .from('cards')
-    .insert({ 
-      column_id: columnId, 
-      title, 
-      description, 
-      position: cardPosition 
-    })
-    .select()
-    .single()
-  
-  if (error) throw error
-  return data
 }
 
 export async function updateCard(id: string, updates: Partial<Card>): Promise<Card> {
@@ -169,18 +230,30 @@ export async function updateCard(id: string, updates: Partial<Card>): Promise<Ca
     .select()
     .single()
   
-  if (error) throw error
+  if (error) {
+    console.error('Error updating card:', error)
+    throw error
+  }
   return data
 }
 
-export async function deleteCard(id: string): Promise<void> {
-  const supabase = createClient()
-  const { error } = await supabase
-    .from('cards')
-    .delete()
-    .eq('id', id)
-  
-  if (error) throw error
+export async function deleteCard(cardId: string): Promise<void> {
+  try {
+    const supabase = createClient()
+    
+    const { error } = await supabase
+      .from('cards')
+      .delete()
+      .eq('id', cardId)
+    
+    if (error) {
+      console.error('Error deleting card:', error)
+      throw error
+    }
+  } catch (error) {
+    console.error('Error in deleteCard:', error)
+    throw error
+  }
 }
 
 export async function moveCard(cardId: string, newColumnId: string, newPosition: number): Promise<void> {
@@ -193,7 +266,10 @@ export async function moveCard(cardId: string, newColumnId: string, newPosition:
     .eq('id', cardId)
     .single()
   
-  if (cardError || !card) throw cardError
+  if (cardError || !card) {
+    console.error('Error getting card:', cardError)
+    throw cardError
+  }
   
   // Update the card with new column and position
   const { error } = await supabase
@@ -204,5 +280,8 @@ export async function moveCard(cardId: string, newColumnId: string, newPosition:
     })
     .eq('id', cardId)
   
-  if (error) throw error
+  if (error) {
+    console.error('Error moving card:', error)
+    throw error
+  }
 }

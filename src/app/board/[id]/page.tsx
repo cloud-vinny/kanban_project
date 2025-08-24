@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
-import { getBoard, createColumn, createCard, updateCard, moveCard } from '@/lib/database'
+import { getBoard, createColumn, createCard, moveCard, deleteCard, updateCard } from '@/lib/database'
 import type { BoardWithFullData, Column, Card } from '@/lib/types'
 
 export default function BoardPage() {
@@ -13,23 +12,19 @@ export default function BoardPage() {
   
   const [board, setBoard] = useState<BoardWithFullData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
-  const [newColumnTitle, setNewColumnTitle] = useState('')
-  const [creatingColumn, setCreatingColumn] = useState(false)
   const [draggedCard, setDraggedCard] = useState<Card | null>(null)
+  const [newCardTitle, setNewCardTitle] = useState('')
+  const [newCardDescription, setNewCardDescription] = useState('')
+  const [addingCardTo, setAddingCardTo] = useState<string | null>(null)
+  const [editingCard, setEditingCard] = useState<string | null>(null)
+  const [editCardTitle, setEditCardTitle] = useState('')
+  const [editCardDescription, setEditCardDescription] = useState('')
 
   useEffect(() => {
-    checkUser()
     if (boardId) {
       fetchBoard()
     }
   }, [boardId])
-
-  const checkUser = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    setUser(user)
-  }
 
   const fetchBoard = async () => {
     try {
@@ -42,31 +37,11 @@ export default function BoardPage() {
     }
   }
 
-  const handleCreateColumn = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newColumnTitle.trim() || !board) return
-
-    setCreatingColumn(true)
-    try {
-      const position = board.columns.length + 1
-      const newColumn = await createColumn(board.id, newColumnTitle.trim(), position)
-      setBoard(prev => prev ? {
-        ...prev,
-        columns: [...prev.columns, { ...newColumn, cards: [] }]
-      } : null)
-      setNewColumnTitle('')
-    } catch (error) {
-      console.error('Error creating column:', error)
-    } finally {
-      setCreatingColumn(false)
-    }
-  }
-
-  const handleCreateCard = async (columnId: string, title: string) => {
-    if (!board) return
+  const handleCreateCard = async (columnId: string) => {
+    if (!board || !newCardTitle.trim()) return
 
     try {
-      const newCard = await createCard(columnId, title)
+      const newCard = await createCard(columnId, newCardTitle.trim(), newCardDescription.trim())
       setBoard(prev => prev ? {
         ...prev,
         columns: prev.columns.map(col => 
@@ -75,17 +50,83 @@ export default function BoardPage() {
             : col
         )
       } : null)
+      setNewCardTitle('')
+      setNewCardDescription('')
+      setAddingCardTo(null)
     } catch (error) {
       console.error('Error creating card:', error)
     }
   }
 
+  const handleEditCard = (card: Card) => {
+    setEditingCard(card.id)
+    setEditCardTitle(card.title)
+    setEditCardDescription(card.description || '')
+  }
+
+  const handleSaveCard = async (cardId: string, columnId: string) => {
+    if (!board || !editCardTitle.trim()) return
+
+    try {
+      await updateCard(cardId, {
+        title: editCardTitle.trim(),
+        description: editCardDescription.trim()
+      })
+      setBoard(prev => prev ? {
+        ...prev,
+        columns: prev.columns.map(col => 
+          col.id === columnId 
+            ? { 
+                ...col, 
+                cards: col.cards.map(card => 
+                  card.id === cardId 
+                    ? { ...card, title: editCardTitle.trim(), description: editCardDescription.trim() }
+                    : card
+                )
+              }
+            : col
+        )
+      } : null)
+      setEditingCard(null)
+      setEditCardTitle('')
+      setEditCardDescription('')
+    } catch (error) {
+      console.error('Error updating card:', error)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingCard(null)
+    setEditCardTitle('')
+    setEditCardDescription('')
+  }
+
+  const handleDeleteCard = async (cardId: string, columnId: string) => {
+    if (!board) return
+
+    try {
+      await deleteCard(cardId)
+      setBoard(prev => prev ? {
+        ...prev,
+        columns: prev.columns.map(col => 
+          col.id === columnId 
+            ? { ...col, cards: col.cards.filter(card => card.id !== cardId) }
+            : col
+        )
+      } : null)
+    } catch (error) {
+      console.error('Error deleting card:', error)
+    }
+  }
+
   const handleDragStart = (e: React.DragEvent, card: Card) => {
     setDraggedCard(card)
+    e.dataTransfer.effectAllowed = 'move'
   }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
   }
 
   const handleDrop = async (e: React.DragEvent, targetColumnId: string, targetPosition: number) => {
@@ -135,13 +176,13 @@ export default function BoardPage() {
     )
   }
 
-  if (!board || !user) {
+  if (!board) {
     return (
       <div className="p-6 text-center">
-        <p>Board not found or you don't have access.</p>
+        <p>Board not found.</p>
         <button 
           onClick={() => router.push('/')}
-          className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+          className="btn btn-primary mt-4"
         >
           Back to Boards
         </button>
@@ -151,85 +192,136 @@ export default function BoardPage() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">{board.title}</h1>
-          <p className="text-gray-600">Created {new Date(board.created_at).toLocaleDateString()}</p>
-        </div>
-        <button 
-          onClick={() => router.push('/')}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 underline"
-        >
-          ← Back to Boards
-        </button>
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold text-gray-900">Kanban Board</h1>
       </div>
 
-      {/* Create new column form */}
-      <form onSubmit={handleCreateColumn} className="mb-6">
-        <div className="flex space-x-3">
-          <input
-            type="text"
-            value={newColumnTitle}
-            onChange={(e) => setNewColumnTitle(e.target.value)}
-            placeholder="Enter column title..."
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            disabled={creatingColumn}
-          />
-          <button
-            type="submit"
-            disabled={!newColumnTitle.trim() || creatingColumn}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {creatingColumn ? 'Creating...' : 'Add Column'}
-          </button>
-        </div>
-      </form>
-
       {/* Kanban board */}
-      <div className="flex space-x-6 overflow-x-auto pb-6">
+      <div className="kanban-board">
         {board.columns.map((column) => (
           <div
             key={column.id}
-            className="flex-shrink-0 w-80 bg-gray-50 rounded-lg p-4"
+            className="kanban-column"
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, column.id, column.cards.length)}
           >
-            <h3 className="font-semibold text-gray-900 mb-4">{column.title}</h3>
+            <h3>{column.title}</h3>
             
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1">
               {column.cards.map((card, index) => (
                 <div
                   key={card.id}
-                  draggable
+                  draggable={editingCard !== card.id}
                   onDragStart={(e) => handleDragStart(e, card)}
-                  className="bg-white p-3 rounded border border-gray-200 cursor-move hover:shadow-sm"
+                  className="kanban-card"
                 >
-                  <h4 className="font-medium text-gray-900">{card.title}</h4>
-                  {card.description && (
-                    <p className="text-sm text-gray-600 mt-1">{card.description}</p>
+                  {editingCard === card.id ? (
+                    // Edit mode
+                    <div>
+                      <input
+                        type="text"
+                        value={editCardTitle}
+                        onChange={(e) => setEditCardTitle(e.target.value)}
+                        className="form-input text-sm mb-2"
+                        autoFocus
+                      />
+                      <textarea
+                        value={editCardDescription}
+                        onChange={(e) => setEditCardDescription(e.target.value)}
+                        placeholder="Description (optional)..."
+                        className="form-input text-sm mb-2"
+                        rows={2}
+                      />
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleSaveCard(card.id, column.id)}
+                          disabled={!editCardTitle.trim()}
+                          className="btn btn-primary text-sm px-2 py-1"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="btn btn-secondary text-sm px-2 py-1"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // View mode
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <h4 
+                          className="cursor-pointer hover:text-blue-600 transition-colors"
+                          onClick={() => handleEditCard(card)}
+                        >
+                          {card.title}
+                        </h4>
+                        <button
+                          onClick={() => handleDeleteCard(card.id, column.id)}
+                          className="delete-card-btn"
+                          title="Delete card"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      {card.description && (
+                        <p className="cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleEditCard(card)}>
+                          {card.description}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
               
-              {/* Add card form */}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  const formData = new FormData(e.currentTarget)
-                  const title = formData.get('title') as string
-                  if (title.trim()) {
-                    handleCreateCard(column.id, title.trim())
-                    e.currentTarget.reset()
-                  }
-                }}
-                className="pt-2"
-              >
-                <input
-                  name="title"
-                  placeholder="Add a card..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </form>
+              {/* Add card section */}
+              {addingCardTo === column.id ? (
+                <div className="card-creation-form">
+                  <input
+                    type="text"
+                    value={newCardTitle}
+                    onChange={(e) => setNewCardTitle(e.target.value)}
+                    placeholder="Card title..."
+                    className="form-input text-sm mb-2"
+                    autoFocus
+                  />
+                  <textarea
+                    value={newCardDescription}
+                    onChange={(e) => setNewCardDescription(e.target.value)}
+                    placeholder="Description (optional)..."
+                    className="form-input text-sm mb-2"
+                    rows={2}
+                  />
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleCreateCard(column.id)}
+                      disabled={!newCardTitle.trim()}
+                      className="btn btn-primary text-sm px-3 py-1"
+                    >
+                      Add
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAddingCardTo(null)
+                        setNewCardTitle('')
+                        setNewCardDescription('')
+                      }}
+                      className="btn btn-secondary text-sm px-3 py-1"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingCardTo(column.id)}
+                  className="add-card-button"
+                >
+                  + Add a card
+                </button>
+              )}
             </div>
           </div>
         ))}
