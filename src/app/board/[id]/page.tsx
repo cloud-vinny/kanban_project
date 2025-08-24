@@ -263,7 +263,7 @@ export default function BoardPage() {
                           className="delete-card-btn"
                           title="Delete card"
                         >
-                          🗑️
+                          ❌
                         </button>
                       </div>
                       {card.description && (
