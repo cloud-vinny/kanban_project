@@ -39,7 +39,23 @@ export default function BoardPage() {
 
   const fetchBoard = async () => {
     try {
-      const boardData = await getBoard(boardId)
+      let boardData = await getBoard(boardId)
+      
+             // If board doesn't exist and it's the user's board, create it
+       if (!boardData && boardId === 'f6ee8711-d8fc-4052-be36-8626ecbea3cb') {
+        console.log('Creating default board...')
+        const { createBoard, createColumn } = await import('@/lib/database')
+        const newBoard = await createBoard('My Kanban Board')
+        
+        // Create default columns
+        const todoColumn = await createColumn(newBoard.id, 'To Do', 1)
+        const inProgressColumn = await createColumn(newBoard.id, 'In Progress', 2)
+        const doneColumn = await createColumn(newBoard.id, 'Done', 3)
+        
+        // Fetch the board again with the new columns
+        boardData = await getBoard(newBoard.id)
+      }
+      
       setBoard(boardData)
     } catch (error) {
       console.error('Error fetching board:', error)
