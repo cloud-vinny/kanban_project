@@ -427,6 +427,51 @@ body {
   border-color: #667eea;
 }
 
+/* Optimistic update styles */
+.kanban-card.optimistic {
+  opacity: 0.7;
+  transform: scale(0.98);
+  transition: all 0.3s ease;
+}
+
+.kanban-card.optimistic::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(102, 126, 234, 0.1) 50%, transparent 70%);
+  animation: shimmer 1.5s infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.kanban-card.dragging {
+  opacity: 0.5;
+  transform: rotate(5deg) scale(1.05);
+  z-index: 1000;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.kanban-column.drop-target {
+  background: rgba(102, 126, 234, 0.1);
+  border: 2px dashed #667eea;
+  transform: scale(1.02);
+}
+
+.kanban-column.drop-target h3 {
+  color: #667eea;
+}
+
 .kanban-card h4 {
   font-weight: 600;
   color: #1f2937;
