@@ -9,7 +9,7 @@ A beautiful, modern Kanban board built with **Next.js 14**, **TypeScript**, and 
 
 ## 🌐 Live Demo
 
-**🎉 Live Demo: [https://kanban-project-cloud-vinny.vercel.app](https://kanban-project-cloud-vinny.vercel.app)**
+**🎉 Live Demo: [https://kanban-project-akmz1q3qm-vinnys-projects-9cb973cc.vercel.app](https://kanban-project-akmz1q3qm-vinnys-projects-9cb973cc.vercel.app)**
 
 *The application is now fully deployed and working on Vercel!*
 
@@ -161,7 +161,7 @@ The modular architecture makes it easy to add new features:
 
 **✅ Successfully Deployed on Vercel!**
 
-The application is now live at: **[https://kanban-project-cloud-vinny.vercel.app](https://kanban-project-cloud-vinny.vercel.app)**
+The application is now live at: **[https://kanban-project-akmz1q3qm-vinnys-projects-9cb973cc.vercel.app](https://kanban-project-akmz1q3qm-vinnys-projects-9cb973cc.vercel.app)**
 
 ### Vercel Deployment (Completed)
 ✅ **Code pushed** to GitHub  
