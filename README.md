@@ -7,7 +7,11 @@ A beautiful, modern Kanban board built with **Next.js 14**, **TypeScript**, and 
 ![Supabase](https://img.shields.io/badge/Supabase-2.38.4-green?style=for-the-badge&logo=supabase)
 
 
-*Note: If you don't have a live deployment yet, you can run it locally following the setup instructions below.*
+## 🌐 Live Demo
+
+**🎉 Live Demo: [https://kanban-project-cloud-vinny.vercel.app](https://kanban-project-cloud-vinny.vercel.app)**
+
+*The application is now fully deployed and working on Vercel!*
 
 ## ✨ Features
 
@@ -153,20 +157,20 @@ The modular architecture makes it easy to add new features:
 
 ## 🚀 Deployment
 
-### 🌐 Get a Live Demo URL
+### 🌐 Deployment Status
 
-**Want to share your Kanban board? Deploy it for free!**
+**✅ Successfully Deployed on Vercel!**
 
-### Vercel (Recommended - Free)
-1. **Push your code** to GitHub (already done!)
-2. **Go to [vercel.com](https://vercel.com)** and sign up with GitHub
-3. **Import your repository** `cloud-vinny/kanban_project`
-4. **Add environment variables** in Vercel dashboard:
-   - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key
-5. **Deploy** - Vercel will automatically build and deploy
-6. **Get your live URL** (e.g., `https://kanban-project-abc123.vercel.app`)
-7. **Update the README** with your live demo link above!
+The application is now live at: **[https://kanban-project-cloud-vinny.vercel.app](https://kanban-project-cloud-vinny.vercel.app)**
+
+### Vercel Deployment (Completed)
+✅ **Code pushed** to GitHub  
+✅ **Repository imported** to Vercel  
+✅ **Environment variables** configured  
+✅ **Automatic deployment** completed  
+✅ **Live demo** available and working  
+
+*The deployment process was smooth and the application is fully functional with all features working correctly.*
 
 ### Other Free Options
 - **Netlify**: Works with build command `npm run build`
